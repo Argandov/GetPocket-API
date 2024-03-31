@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 from datetime import datetime, timedelta
+from modules.scraper import scrape
+from modules.summarizer import summarize
 from modules.tagging import tags_list
 import os
 import requests
@@ -69,7 +71,9 @@ def get_last_posts(one_week_ago_timestamp, consumer_key, access_token):
         print(f"[X] ERROR!: {response.status_code}")
         sys.exit(1)
 
-def retrieve_articles(res: dict[str], tag) -> int:
+
+def retrieve_articles(res: dict[str], tag):
+    scraped_articles = []
     """
         Regresa la lista completa
 
@@ -113,16 +117,29 @@ def retrieve_articles(res: dict[str], tag) -> int:
             print(f" - Description (Excerpt): {"N/A" if not value["excerpt"] else value["excerpt"]}")
             print(f" - URL: {value["resolved_url"]}")
             print(f" - Video: {"Includes Video" if int(value["has_video"]) == 1 else ("Is a Video" if int(value["has_video"]) == 2 else "No")}")
+
+            if not args.read:
+                if input(">> Would you like to summarize this article? (y/n): ") == "y":
+                    date, raw_article, title, authors = scrape(value["resolved_url"])
+                    raw_content = ""
+                    raw_content += f"Title: {title}\n"
+                    raw_content += f"Authors: {authors}\n"
+                    raw_content += f"Date: {date}\n"
+                    raw_content += f"Word Count: {value['word_count']}\n"
+                    raw_content += f"URL: {value['resolved_url']}\n"
+                    raw_content += f"Content: {raw_article}"
+                    scraped_articles.append(raw_content)
             
         else:
             pass
 
-    return wordcount
+    return wordcount, scraped_articles
 
 def argument_parser(tags_list:list[str]) -> list[str]:
     parser = argparse.ArgumentParser(description='Pocket API Help:')
         # Parse arguments
     parser.add_argument('--list', '-l', nargs='?', const=True, default=None, help='List available tags')
+    parser.add_argument('--read', '-r', nargs='?', const=True, default=None, help='Only read; do not process')
     parser.add_argument('--tag', '-t', help='Specify a tag')
             # Argument Parsing
     args = parser.parse_args()
@@ -148,14 +165,38 @@ articles = raw.json()["list"]
     # "list" is the actual value of the nested Dict that Pocket sends where the articles are listed.
 #articles = json_obj["list"]
 
+# PHASE 1: Retrieve Articles and Metadata in a list
 article_id_list = []
-wordcount = retrieve_articles(articles, tag)
+wordcount, scraped_articles = retrieve_articles(articles, tag)
+
+if args.read:
+    for article in scraped_articles:
+        print(article)
+    print(f"WC: {wordcount}")
+    print("---"*35)
+    print(f"TAG: {tag} | WC: {wordcount} | ARTICLES: {len(article_id_list)}")
+    sys.exit(0)
 
 if len(article_id_list) == 0:
     print("[-] No results")
-else:
-    print("---"*35)
-    print(f"TAG: {tag} | WC: {wordcount} | ARTICLES: {len(article_id_list)}")
+    sys.exit(1)
+
+# PHASE 2: Summarize & Get the TL;DR of every article and generate a "list of TLDRs"
+TLDR_list = []
+for raw_content in scraped_articles:
+    # Obtain a list of summarized articles by GPT
+    single_summary = summarize(raw_content, "tldr")
+    TLDR_list.append(single_summary)
+
+# PHASE 3: Merge the summarized articles into one, and send to GPT to generate the overall digest of information
+raw_summaries = ""
+for summary in TLDR_list:
+    # Merge the summarized articles into one
+    raw_summaries += summary + "\n"
+    # Generate the final digest
+final_digest = summarize(raw_summaries, "merge")
+
+print(final_digest)
 
 """ Useful for later: Archive after reading """
 #archive_items(article_id_list)

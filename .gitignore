@@ -2,3 +2,4 @@ tagging.py
 .env
 __pycache__
 venv
+prompts.py
