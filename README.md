@@ -1,12 +1,12 @@
-# Pocket-API-Wrapper-Python
+# Weaver
 
-Pocket API Wrapper is a Python script that interacts with Pocket's API to retrieve Pocket posts from the past week, sorted by tags and providing detailed information regarding each post.
+Weaver is a Pocket API Wrapper that interacts with Pocket's API to retrieve Pocket posts from the past week, sorted by tags and providing detailed information regarding each post. Then, summarizes each post and prints a second global summary to stdout.
 
 ## Pocket Setup
 
 Get a Consumer Key from a newly created Pocket App. You can do so by following the instructions [here](https://getpocket.com/developer/docs/authentication).
 
-Use "authorizer.py" to get an authorization code (Authenticate your app).
+Use "authorizer.py" to get an **authorization** code (Authenticate your app).
 
 ## .env variables
 
@@ -16,32 +16,29 @@ This program uses environment variables to secure API keys. Before running, ensu
 POCKET_APP_NAME=<your-pocket-app-name>
 POCKET_CONSUMER_KEY=<your-pocket-consumer-key>
 POCKET_ACCESS_TOKEN=<your-pocket-access-token>
+OPENAI_API_KEY=<your-openai-api-key>
 ```
+
+Optional: If using Poetry, finish setup by running `sh setup.sh` to install the "alias" as `news` in the zshrc/bashrc file.
 
 ## Usage
 
 After setting up, run the script by using:
 
 ```
-python3 pocket_API_wrapper.py
+python3 pocket_API_wrapper.py -h
 ```
-Use `--list` or `-l` to list available tags.
-
-Use `--tag` or `-t` followed by a tag to specify a tag.
+This will list the available options:
+- `--tag` - specify the tag to filter the posts
+- `--list` - list all available tags (To be specified in `modules/tagging.py`)
+- `--read` - To only display to stdout all the posts that have been saved, and do not process them further
+- `--help` - list all available options
 
 Example:
 
 ```
-python3 pocket_API_wrapper.py --tag python
+python3 app.py -t python -r
 ```
-
-## Program Flow
-
-1. The program starts by loading the .env variables and processing the command-line arguments.
-2. The `get_last_posts` function is called which interacts with the Pocket API to get the last week’s posts.
-3. It then parses the response and filters out the posts based on the tag provided by the user.
-4. For each qualifying post, an information summary is printed which includes time added, id, status of the article, word count, language of the article, title, excerpt, and URL.
-5. Total word count and count of articles are printed at the end.
 
 ## Note
 
