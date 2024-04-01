@@ -19,10 +19,8 @@ access_token = os.environ.get("POCKET_ACCESS_TOKEN")
 def last_week_timestamp()-> int:
 
     """     
-
         This function does not work anymore since Pocket's API does not respond to relative timestamps 
         (It ignores the "since" parameter)
-
     """
 
     # Current time
