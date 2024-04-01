@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "getpocket-api"
+name = "app"
 version = "0.1.0"
 description = "Retrieve Pocket Posts by Tag Programmatically by using pocket's API"
 authors = ["Argandov"]
@@ -11,6 +11,9 @@ datetime = "^5.5"
 requests = "^2.31.0"
 argparse = "^1.4.0"
 python-dotenv = "^1.0.1"
+openai = "^1.14.3"
+newspaper3k = "^0.2.8"
+lxml-html-clean = "^0.1.0"
 
 
 [build-system]

@@ -136,22 +136,23 @@ def retrieve_articles(res: dict[str], tag):
     return wordcount, scraped_articles
 
 def argument_parser(tags_list:list[str]) -> list[str]:
-    parser = argparse.ArgumentParser(description='Pocket API Help:')
+    parser = argparse.ArgumentParser(description='Pocket Wrapper App Help:')
         # Parse arguments
     parser.add_argument('--list', '-l', nargs='?', const=True, default=None, help='List available tags')
     parser.add_argument('--read', '-r', nargs='?', const=True, default=None, help='Only read; do not process')
     parser.add_argument('--tag', '-t', help='Specify a tag')
             # Argument Parsing
     args = parser.parse_args()
+    # If no arguments are passed, print help:
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(0)
     if args.list:
         for tag in tags_list:
             print(tag)
         sys.exit(0)
     elif args.tag:
         tag = args.tag
-    else:
-        print("[x] Must specify a Tag. Exiting...")
-        sys.exit(1)
     return args, tag
 
 
