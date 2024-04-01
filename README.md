@@ -1,5 +1,7 @@
 # Weaver
 
+![weaver_logo](images/banner.png)
+
 Weaver is a Pocket API Wrapper that interacts with Pocket's API to retrieve Pocket posts from the past week, sorted by tags and providing detailed information regarding each post. Then, summarizes each post and prints a second global summary to stdout.
 
 ## Pocket Setup
