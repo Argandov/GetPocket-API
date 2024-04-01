@@ -1,0 +1,5 @@
+# EXAMPLE PROMPTS:
+
+tldr_prompt = "TLDR:"
+
+merge_prompt = "Merge the following summaries into 1 big summary"
