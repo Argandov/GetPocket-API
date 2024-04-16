@@ -46,7 +46,7 @@ def format_timestamps(UNIX_TIMESTAMP) -> str:
     
     return timestamp
 
-def get_last_posts(one_week_ago_timestamp, consumer_key, access_token):
+def get_last_posts(one_week_ago_timestamp, consumer_key, access_token, results_counter=100):
     url = "https://getpocket.com/v3/get"
 
     headers = {
@@ -56,7 +56,7 @@ def get_last_posts(one_week_ago_timestamp, consumer_key, access_token):
     payload = {
         "consumer_key": consumer_key,
         "access_token": access_token,
-        "count": "100",
+        "count": str(results_counter),
         "detailType": "complete"
     }
 
@@ -70,15 +70,28 @@ def get_last_posts(one_week_ago_timestamp, consumer_key, access_token):
         sys.exit(1)
 
 
-def retrieve_articles(res: dict[str], tag):
+def retrieve_articles(res: dict[str], tag: str, results_counter: int):
+        # DEFAULT VALUE
+    continue_flag = 0
     scraped_articles = []
     """
         Regresa la lista completa
 
     """
+
+    CONTINUE_MESSAGE = \
+            """
+    [?] Would you like to summarize this article?
+     -  [y]es/ [n]o/ [f]inish and skip this one / Stop Asking and process [A]ll 
+    >> """
     wordcount = 0
 
+    # Control flow: User is asked to continue processing articles or not
+    counter = 0
+
     for key, value in res.items():
+        if counter == results_counter + 1:
+            break
         if isinstance(value, dict) and "tags" in value:
 
             if tag not in value["tags"]:
@@ -101,33 +114,58 @@ def retrieve_articles(res: dict[str], tag):
 
             article_id_list.append(value["item_id"])
 
-            print("***"*20)
-            print(f" - Time Added: {time_added}")
-            #print(f" - Time Updated: {time_updated}")
-            print(f" - ID: {value["item_id"]}")
-                # Not very useful; prone to errors:
-            print(f" - Is Article: {\
-                    "yes" if int(value["is_article"]) == 1 else \
-                    "no"}")
-            print(f" - Word Count: {value["word_count"]}")
-            print(f" - Language: {value["lang"]}")
-            print(f" - Title: {value["resolved_title"]}")
-            print(f" - Description (Excerpt): {"N/A" if not value["excerpt"] else value["excerpt"]}")
-            print(f" - URL: {value["resolved_url"]}")
-            print(f" - Video: {"Includes Video" if int(value["has_video"]) == 1 else ("Is a Video" if int(value["has_video"]) == 2 else "No")}")
+                # Print article information If user's previous selection was "y" or "n"
+            if continue_flag == 0:
 
-            if not args.read:
-                if input(">> Would you like to summarize this article? (y/n): ") == "y":
-                    date, raw_article, title, authors = scrape(value["resolved_url"])
-                    raw_content = ""
-                    raw_content += f"Title: {title}\n"
-                    raw_content += f"Authors: {authors}\n"
-                    raw_content += f"Date: {date}\n"
-                    raw_content += f"Word Count: {value['word_count']}\n"
-                    raw_content += f"URL: {value['resolved_url']}\n"
-                    raw_content += f"Content: {raw_article}"
-                    scraped_articles.append(raw_content)
-            
+                print(f"****** Article #{str(counter+1)} ******")
+                print(f" - Time Added: {time_added}")
+                #print(f" - Time Updated: {time_updated}")
+                print(f" - ID: {value["item_id"]}")
+                    # Not very useful; prone to errors:
+                print(f" - Is Article: {\
+                        "yes" if int(value["is_article"]) == 1 else \
+                        "no"}")
+                print(f" - Word Count: {value["word_count"]}")
+                print(f" - Language: {value["lang"]}")
+                print(f" - Title: {value["resolved_title"]}")
+                print(f" - Description (Excerpt): {"N/A" if not value["excerpt"] else value["excerpt"]}")
+                print(f" - URL: {value["resolved_url"]}")
+                print(f" - Video: {"Includes Video" if int(value["has_video"]) == 1 else ("Is a Video" if int(value["has_video"]) == 2 else "No")}")
+
+            if args.process:
+                # 0 = Skip current selection
+                # 1 = End with current selection, stop processing
+                # 2 = Process the rest, don't ask again
+                if continue_flag == 1:
+                    continue
+                elif continue_flag == 0:
+                    process_user_selection = input(CONTINUE_MESSAGE)
+                    while process_user_selection not in ["y", "n", "f", "a"]:
+                        process_user_selection = input(CONTINUE_MESSAGE)
+                elif process_user_selection == "a":
+                    process_user_selection = "y"
+                    continue_flag = 2
+                elif continue_flag == 2:
+                    process_user_selection == "y"
+                if process_user_selection == "y":
+                    try:
+                        date, raw_article, title, authors = scrape(value["resolved_url"])
+                        raw_content = ""
+                        raw_content += f"Title: {title}\n"
+                        raw_content += f"Authors: {authors}\n"
+                        raw_content += f"Date: {date}\n"
+                        raw_content += f"Word Count: {value['word_count']}\n"
+                        raw_content += f"URL: {value['resolved_url']}\n"
+                        raw_content += f"Content: {raw_article}"
+                        scraped_articles.append(raw_content)
+                    except Exception as e:
+                        # Print in color the error:
+                        print(f"\033[91m[X] ERROR Scraping this URL: {e}\033[0m")
+                elif process_user_selection == "n":
+                    continue
+                elif process_user_selection == "f":
+                    continue_flag = 1
+            counter += 1
         else:
             pass
 
@@ -136,12 +174,18 @@ def retrieve_articles(res: dict[str], tag):
 def argument_parser(tags_list:list[str]) -> list[str]:
     parser = argparse.ArgumentParser(description='Pocket Wrapper App Help:')
         # Parse arguments
+    parser.add_argument('--number', '-n', type=int, default=100, help='Number of articles to retrieve')
     parser.add_argument('--list', '-l', nargs='?', const=True, default=None, help='List available tags')
-    parser.add_argument('--read', '-r', nargs='?', const=True, default=None, help='Only read; do not process')
+    parser.add_argument('--process', '-p', nargs='?', const=True, default=None, help='Complete the processing by LLM model (Default: False)')
     parser.add_argument('--tag', '-t', help='Specify a tag')
             # Argument Parsing
     args = parser.parse_args()
     # If no arguments are passed, print help:
+    if not args.number:
+        results_counter = 100
+        print("No limit specified. Defaulting to 100.")
+    else:
+        results_counter = args.number
     if len(sys.argv) == 1:
         parser.print_help()
         sys.exit(0)
@@ -151,14 +195,14 @@ def argument_parser(tags_list:list[str]) -> list[str]:
         sys.exit(0)
     elif args.tag:
         tag = args.tag
-    return args, tag
+    return args, tag, results_counter
 
 
 
-args, tag = argument_parser(tags_list)
+args, tag, results_counter = argument_parser(tags_list)
 
 relative_time = last_week_timestamp()
-raw = get_last_posts(relative_time, consumer_key, access_token)
+raw = get_last_posts(relative_time, consumer_key, access_token, results_counter)
 
 articles = raw.json()["list"]
     # "list" is the actual value of the nested Dict that Pocket sends where the articles are listed.
@@ -166,14 +210,14 @@ articles = raw.json()["list"]
 
 # PHASE 1: Retrieve Articles and Metadata in a list
 article_id_list = []
-wordcount, scraped_articles = retrieve_articles(articles, tag)
+wordcount, scraped_articles = retrieve_articles(articles, tag, results_counter)
 
-if args.read:
+if not args.process:
     for article in scraped_articles:
         print(article)
     print(f"WC: {wordcount}")
     print("---"*35)
-    print(f"TAG: {tag} | WC: {wordcount} | ARTICLES: {len(article_id_list)}")
+    print(f"TAG: {tag} | WC: {wordcount} | ARTICLES: {len(article_id_list)} | ARTICLES REQUESTED: {str(results_counter)}")
     sys.exit(0)
 
 if len(article_id_list) == 0:
